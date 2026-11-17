@@ -14,10 +14,10 @@ Status legend: [ ] todo, [~] in progress, [x] done.
 - [x] `App\Support\Money`: nano-dollar formatting
 - [x] `App\Pricing\PricingService`: cost, charge, estimate range (tests include the $0.373875 worst case)
 
-## Phase 2: Data model
-- [ ] `generations` migration + model
-- [ ] `webhook_events` migration + model
-- [ ] `ledger_entries` migration + model (unique per generation + type)
+## Phase 2: Data model [x]
+- [x] `generations` migration + model + factory
+- [x] `webhook_events` migration + model
+- [x] `ledger_entries` migration + model (unique per generation + type)
 
 ## Phase 3: Provider client and submission
 - [ ] `PixelforgeClient` (create, get, list, usage)
@@ -56,6 +56,13 @@ Status legend: [ ] todo, [~] in progress, [x] done.
 - The documented worst case ($0.373875) only reconciles if text tokens are scaled up by the full +15% (100 tokens -> 115). So the max estimate uses `ceil(est*1.15)` and the min uses `floor(est*0.85)`.
 - The charge is `ceil(cost * 125 / 100)`. With published rates the cost is always a multiple of 500, so this is exact today; the rounding is only a safety net, and it lives in one place.
 - Estimates are stored and shown as a range (min to max). Balance checks will use the max.
+
+### Phase 2
+- `generations.id` is a UUID. It is the `Idempotency-Key` sent to Pixelforge, and the value I will put in request `metadata` so a webhook that arrives before `provider_generation_id` is stored can still be matched.
+- Money columns are `unsignedBigInteger` nano-dollars: `estimated_min/max_nanos`, `provider_cost_nanos`, `charged_nanos`.
+- Exactly-once guarantees are enforced by the database, not just code: unique `webhook_events.event_id` and unique `ledger_entries (generation_id, type)`. Both have tests.
+- `ledger_entries` holds `charge` and `topup` rows with positive amounts; the `type` gives the direction. Each charge row also stores `provider_cost_nanos` so profit is a plain sum later.
+- Not yet decided: the user's balance column. It is a stretch goal and can be derived as topups minus charges from the ledger.
 
 ## Open questions
 (none yet)
