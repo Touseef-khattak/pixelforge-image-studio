@@ -21,6 +21,8 @@ Base URL `https://pixelforge.promptedit.dev/v1`. JSON, UTC ISO 8601, ids `gen_` 
 | output | $40.00 | exact up front by quality and size |
 | reasoning | $12.50 | only after completion |
 
+Live `GET /v1/pricing` (verified): `rates` is `{input_text_tokens, input_image_tokens, output_tokens, reasoning_tokens}` as decimal strings per 1M tokens (`"5.00"`, `"10.00"`, `"40.00"`, `"12.50"`). `tokens` carries `characters_per_text_token` (4), `text_token_variance` (0.15), `per_reference_image` (765) and the output and reasoning tables below. A generation's own `rates` object probably uses the same keys; its `usage` field names are **unverified** until a real generation completes.
+
 Output tokens: low 280 (1024x1024) / 420 (other); medium 1100 / 1650; high 4300 / 6450.
 Reasoning ranges: low 0-500, medium 200-2000, high 1000-8000.
 Worst case example: high, 1536x1024, 400 chars, 2 reference images = $0.373875.
