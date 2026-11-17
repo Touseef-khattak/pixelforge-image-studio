@@ -10,9 +10,9 @@ Status legend: [ ] todo, [~] in progress, [x] done.
 - [x] Scaffold Laravel 12 + Breeze (Vue + Inertia, Pest) as separate generated-code commits
 - [x] Env config for Pixelforge (`config/pixelforge.php`, `.env.example`)
 
-## Phase 1: Money core
-- [ ] `Money` helper / nano-dollar formatting
-- [ ] `PricingService`: cost, charge, estimate range (with tests, incl. the $0.373875 worst case)
+## Phase 1: Money core [x]
+- [x] `App\Support\Money`: nano-dollar formatting
+- [x] `App\Pricing\PricingService`: cost, charge, estimate range (tests include the $0.373875 worst case)
 
 ## Phase 2: Data model
 - [ ] `generations` migration + model
@@ -50,6 +50,12 @@ Status legend: [ ] todo, [~] in progress, [x] done.
 - Breeze (Vue + Inertia) for auth instead of the newer starter kits, because it installs with Composer alone. 25 stock tests pass.
 - Local DB is SQLite, queue driver is `database` (Laravel 12 defaults). Production DB is chosen in Phase 6.
 - Generated scaffolding is committed on its own so hand-written diffs stay small.
+
+### Phase 1
+- Rates are per-token nano-dollars (`$X/M` = `X*1000`). `Rates::published()` holds the documented rates; a `Rates` built from a generation's own `rates` object comes in Phase 3, once the payload shape is confirmed against the live API.
+- The documented worst case ($0.373875) only reconciles if text tokens are scaled up by the full +15% (100 tokens -> 115). So the max estimate uses `ceil(est*1.15)` and the min uses `floor(est*0.85)`.
+- The charge is `ceil(cost * 125 / 100)`. With published rates the cost is always a multiple of 500, so this is exact today; the rounding is only a safety net, and it lives in one place.
+- Estimates are stored and shown as a range (min to max). Balance checks will use the max.
 
 ## Open questions
 (none yet)
