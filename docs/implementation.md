@@ -4,11 +4,11 @@ Rule: every commit is small enough for a human to review easily in a PR (see `CL
 
 Status legend: [ ] todo, [~] in progress, [x] done.
 
-## Phase 0: Foundations
-- [ ] Docs folder, CLAUDE.md, API and money docs
-- [ ] Check toolchain (PHP, Composer, Node, git); `git init`
-- [ ] Scaffold Laravel + Vue + Inertia (starter kit) as its own commit
-- [ ] Env config for Pixelforge (`PIXELFORGE_API_KEY`, `PIXELFORGE_WEBHOOK_SECRET`, base URL)
+## Phase 0: Foundations [x]
+- [x] Docs folder, CLAUDE.md, API and money docs
+- [x] Check toolchain (PHP 8.2.0, Composer 2.5.8, Node 22, git); `git init`
+- [x] Scaffold Laravel 12 + Breeze (Vue + Inertia, Pest) as separate generated-code commits
+- [x] Env config for Pixelforge (`config/pixelforge.php`, `.env.example`)
 
 ## Phase 1: Money core
 - [ ] `Money` helper / nano-dollar formatting
@@ -45,7 +45,11 @@ Status legend: [ ] todo, [~] in progress, [x] done.
 - [ ] Admin report by day and user, with usage reconciliation command
 
 ## Decisions log
-(Append here after each phase.)
+### Phase 0
+- Laravel 12 (not 13): the local PHP is 8.2.0, which Laravel 12 supports.
+- Breeze (Vue + Inertia) for auth instead of the newer starter kits, because it installs with Composer alone. 25 stock tests pass.
+- Local DB is SQLite, queue driver is `database` (Laravel 12 defaults). Production DB is chosen in Phase 6.
+- Generated scaffolding is committed on its own so hand-written diffs stay small.
 
 ## Open questions
 (none yet)
