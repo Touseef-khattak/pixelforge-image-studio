@@ -74,6 +74,17 @@ curl -s "https://pixelforge.promptedit.dev/v1/usage?start_date=YYYY-MM-DD&end_da
 
 For each day, `cost_usd` x 1,000,000,000 must equal `cost_nanos`, and `generations` must match the count. Generations made with the **local** key are not in the production database or its usage report; compare each environment with its own key.
 
+## 3a. Admin report and the automatic reconciliation
+The easiest way to do step 3 is the built-in command. On the server (or locally) run:
+
+```
+php artisan usage:reconcile --from=YYYY-MM-DD --to=YYYY-MM-DD
+```
+
+It compares, for every UTC day, our recorded provider cost and generation count with `GET /v1/usage` for the key in `.env`, prints a table, and exits non-zero on any `MISMATCH` (a difference is shown in nano-dollars). Run it with the **production** key against the **production** database. A mismatch of exactly the cost of a few generations usually means those generations were made with the same key but are not in this database (for example local test runs against a shared key).
+
+The report page itself is at `/admin/report` (admins only; make an account an admin with `docs/admin_report_patch.sql`). It shows credits charged, provider cost and profit by UTC day and by user. Its provider-cost column is the same figure the command compares with Pixelforge.
+
 ## 3b. Automated browser tests (Playwright)
 The suite lives in `e2e/` and drives the installed Chrome, so no browser download is needed.
 

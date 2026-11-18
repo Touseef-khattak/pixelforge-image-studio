@@ -10,6 +10,13 @@ Built for the PromptEdit Senior Product Engineer take-home. The task brief is in
 - **History:** live status (queued, processing, succeeded, failed), the estimate, the exact final cost and the image. Failed generations are free and say so.
 - **Webhooks:** signed, deduplicated and order-independent. A polling command recovers lost ones.
 
+## Admin report
+Operators (`users.is_admin`) get `/admin/report`: credits charged, provider cost and profit, by UTC day and by user, with a date filter. A generation counts on the UTC day it completed, the same rule as Pixelforge's `GET /v1/usage`, so provider costs reconcile exactly. `php artisan usage:reconcile` compares them with that report day by day, in nano-dollars, and exits non-zero on any mismatch.
+
+![Admin spend report](docs/screenshots/admin-report.png)
+
+To make an account an admin, set `is_admin = 1` on its `users` row (see `docs/admin_report_patch.sql`).
+
 ## How the money stays exact
 - Money is an **integer number of nano-dollars** (1 USD = 1,000,000,000), never a float. This matches the nine decimals of Pixelforge's `GET /v1/usage`, so provider costs reconcile to the unit.
 - All cost arithmetic lives in one class, `App\Pricing\PricingService`: provider cost is tokens times per-token rates, and the user charge is `ceil(cost x 125 / 100)`. Rates come from each generation's own `rates` object, parsed from strings without floats.
@@ -72,5 +79,5 @@ The app runs on shared PHP hosting with cron jobs for the queue worker and the s
 - No pagination yet: history shows the latest 50 generations.
 - The up-front estimate uses the published rates; the final charge always uses the generation's own rates.
 - Generated images are not copied to our storage, so they stop loading when Pixelforge's links expire after 24 hours (allowed by the brief).
-- Stretch goals (admin report, balances) are not built yet.
+- Balances and the fake "Buy credits" flow (stretch goal) are not built yet. The admin report is.
 - The phased plan, decisions and open questions are tracked in [`docs/implementation.md`](docs/implementation.md).

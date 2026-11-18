@@ -47,7 +47,8 @@ Status legend: [ ] todo, [~] in progress, [x] done.
 
 ## Phase 7: Stretch goals
 - [ ] Balances, buy credits, block when unaffordable
-- [ ] Admin report by day and user, with usage reconciliation command
+- [x] Admin report by day and user (`/admin/report`), with the `usage:reconcile` command against `GET /v1/usage`
+- [ ] Run the report and `usage:reconcile` against the production database and production key
 
 ## Decisions log
 ### Phase 0
@@ -103,6 +104,16 @@ Status legend: [ ] todo, [~] in progress, [x] done.
 - **Queue.** A separate `queue:work` cron never ran, and jobs sat at `attempts = 0`; once a worker finally ran, such jobs were failed by their 15 minute lifetime (`MaxAttemptsExceededException`) and their generations were marked failed at no cost, as designed. The fix was to schedule `queue:work --stop-when-empty --max-time=50` from `routes/console.php`, so one cron (`cd <app> && /opt/alt/php83/usr/bin/php artisan schedule:run`) does everything. The cron command needs `cd` before the path, and the full PHP path, because a bare `php` can be an older version.
 - **Separate keys per environment.** The first deployment reused the local key and webhook secret. A signed test ping confirmed this; it was fixed with a dedicated production key, and the same test now returns 401. Keys must not be shared, otherwise `GET /v1/usage` mixes local and production generations.
 - **Local test environment gotcha.** On Windows, the scheduler's child process lacked the CA bundle fix, so reconcile failed silently. Fixed locally with `PHP_INI_SCAN_DIR` (see the testing guide).
+
+### Phase 7: admin report
+- **Access.** `users.is_admin` (boolean, default false, not mass-assignable) plus a `view-reports` gate on `GET /admin/report`. Guests go to login, regular users get 403, and the nav link only renders for admins. There is no UI to grant admin; it is a database change (`docs/admin_report_patch.sql`).
+- **Which day a charge belongs to.** `SpendReport` groups by the UTC day the generation *completed* (`generations.completed_at`), not by when the ledger row was written. That is the rule Pixelforge uses in `GET /v1/usage`, so the provider-cost column reconciles with it even for a generation that finishes just before midnight and whose webhook arrives just after. Amounts come from the ledger, so the report can only ever show money that was actually charged.
+- **Integer math end to end.** The report sums integer nano-dollars. Money and the margin are formatted on the server (`Money::format`; margin uses `intdiv`), so the browser shows strings and does no arithmetic.
+- **Exact reconciliation.** `Money::parseUsd` turns Pixelforge's nine-decimal `cost_usd` string into nano-dollars without floats and rejects anything it cannot represent. `UsageReconciliation` compares each UTC day in a range, on cost and on generation count, and also catches a day that only one side has. `php artisan usage:reconcile [--from= --to=]` prints a table and exits non-zero on any mismatch.
+- **Verified against the real API.** After the local key's earlier generations were gone from the database, two new real generations were charged (provider cost 76,860,000 nano-dollars). Pixelforge's total moved by exactly that amount and the remaining gap (135,287,500) stayed identical to the gap measured before, i.e. only the already-lost generations differ.
+- **Bug found while verifying: the test suite wiped the dev database.** The in-memory SQLite lines in `phpunit.xml` were commented out, so every `php artisan test` ran `RefreshDatabase` against whatever database `.env` pointed at. Fixed (the lines are enabled) and verified with a marker row that survives a full run. Anyone who ran the suite against a real database before this fix would have lost its data.
+- **Admin UI.** Summary cards (charged, provider cost, profit and margin, generations), a by-day table whose rows expand to per-user detail, a by-user table, and a UTC date filter. Screenshot: `docs/screenshots/admin-report.png`.
+- **Not done / next.** The page does not yet call `GET /v1/usage` itself; use the command. Balances and the fake "Buy credits" flow are still open.
 
 ### Local development note
 Laragon/WAMP PHP often has no CA bundle, so HTTPS calls fail with cURL error 60. The client treats that as a transient error and retries, so it looks like a hang rather than a crash. Fix with `curl.cainfo` and `openssl.cafile` in `php.ini`, or run with `php -d curl.cainfo=<bundle> -d openssl.cafile=<bundle>`. Git for Windows ships a bundle at `C:\Program Files\Git\mingw64\etc\ssl\certs\ca-bundle.crt`.
