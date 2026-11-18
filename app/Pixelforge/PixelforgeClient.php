@@ -35,6 +35,19 @@ class PixelforgeClient
         return $this->send(fn (PendingRequest $http) => $http->get("/generations/{$id}"));
     }
 
+    /**
+     * Daily billing for this key, by the UTC day each generation completed. Dates are inclusive.
+     *
+     * @return array<string, mixed> the usage object (`data` rows and `total`)
+     */
+    public function usage(string $startDate, string $endDate): array
+    {
+        return $this->send(fn (PendingRequest $http) => $http->get('/usage', [
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+        ]));
+    }
+
     private function http(): PendingRequest
     {
         return Http::baseUrl($this->baseUrl)

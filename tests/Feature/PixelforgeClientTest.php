@@ -50,6 +50,16 @@ it('classifies which errors are retryable', function (int $status, string $code,
     'bad key' => [401, 'invalid_api_key', false],
 ]);
 
+it('fetches the usage report for an inclusive date range', function () {
+    Http::fake(['pf.test/*' => Http::response(['data' => [['date' => '2026-11-18', 'generations' => 3, 'cost_usd' => '0.038325000']], 'total' => ['cost_usd' => '0.038325000']])]);
+
+    $usage = client()->usage('2026-11-18', '2026-11-18');
+
+    expect($usage['data'][0]['cost_usd'])->toBe('0.038325000');
+    Http::assertSent(fn (Request $r) => str_starts_with($r->url(), 'https://pf.test/v1/usage')
+        && $r['start_date'] === '2026-11-18' && $r['end_date'] === '2026-11-18');
+});
+
 it('fetches a generation', function () {
     Http::fake(['pf.test/v1/generations/gen_1' => Http::response(['id' => 'gen_1', 'status' => 'processing'])]);
 
