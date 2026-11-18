@@ -32,9 +32,11 @@ Status legend: [ ] todo, [~] in progress, [x] done.
 - [x] Polling reconciliation command + schedule
 - [x] Verified end to end against the real API (polling path); real webhook delivery is still to be verified once a public URL exists (Phase 6)
 
-## Phase 5: UI
-- [ ] Generate page with live estimate range
-- [ ] History page with live status, estimate vs actual, image, errors
+## Phase 5: UI [x]
+- [x] Generate page with live estimate range
+- [x] History page with live status, estimate vs actual, image, errors
+- [x] Navigation (New image, History); `/dashboard` redirects to the generate page
+- [ ] Not yet seen in a real browser (see Phase 5 notes)
 
 ## Phase 6: Deploy and verify
 - [ ] Deploy (queue worker + scheduler), set webhook URL, secrets
@@ -80,6 +82,16 @@ Status legend: [ ] todo, [~] in progress, [x] done.
 - Signature timestamp: the code accepts unix seconds, and falls back to `strtotime` for an ISO string. **Unverified** until a real delivery arrives, because the docs give only `t=<timestamp>`. Tolerance is 300s (`PIXELFORGE_WEBHOOK_TOLERANCE`).
 - Polling: `generations:reconcile` runs every minute and picks generations with a provider id, not final, and no update for 2 minutes. Rows with no provider id are left to `SubmitGeneration`'s own retries. The scheduler (`schedule:run` every minute) must be running on every environment, or lost webhooks are never recovered.
 - Real check: 3 real generations (one made by hand, two through the app code and the poller) totalled 38,325,000 nano-dollars, and `GET /v1/usage` reported `0.038325000`. Resubmitting an already-created generation returned the same Pixelforge id (idempotency confirmed live).
+
+### Phase 5
+- The live estimate is fetched from `GET /generations/estimate`, which calls `PricingService`. No pricing arithmetic exists in JavaScript, so the number on the form is the number stored. Requests are debounced (300ms) and a response overtaken by a newer request is ignored.
+- Money reaches the browser already formatted (`Money::format`) by `GenerationResource`. The browser never does money math. A failed generation shows `$0.00`; a running one shows "Known when finished".
+- The history page polls every 3s only while a generation is unfinished, and pauses while the tab is hidden. Polling reloads only the `generations` prop.
+- Expired image links are hidden server-side (`image_url_expires_at` in the past) and flagged `image_expired`; a link that fails to load shows the same "Image link expired" message.
+- History shows the latest 50 generations. There is no pagination yet.
+- The estimate uses `Rates::published()`, not live `GET /v1/pricing`. If Pixelforge changed rates, the estimate would drift while the final charge (which uses each generation's own `rates`) stays right.
+- Feature tests now call `withoutVite()`, so they pass on a fresh clone without `npm run build`. Verified by temporarily removing `public/build`.
+- **Not verified visually:** the Chrome extension was not connected, so the pages were checked only through Inertia prop tests and a successful `npm run build`. A manual pass in a browser is still needed (layout, polling behavior, estimate updates while typing).
 
 ### Local development note
 Laragon/WAMP PHP often has no CA bundle, so HTTPS calls fail with cURL error 60. The client treats that as a transient error and retries, so it looks like a hang rather than a crash. Fix with `curl.cainfo` and `openssl.cafile` in `php.ini`, or run with `php -d curl.cainfo=<bundle> -d openssl.cafile=<bundle>`. Git for Windows ships a bundle at `C:\Program Files\Git\mingw64\etc\ssl\certs\ca-bundle.crt`.
