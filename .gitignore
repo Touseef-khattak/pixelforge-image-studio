@@ -24,3 +24,7 @@ yarn-error.log
 
 # Credentials: never commit
 /docs/admin_user.sql
+
+# Playwright output
+/e2e-results
+/e2e-report
