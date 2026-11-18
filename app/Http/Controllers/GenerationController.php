@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreGenerationRequest;
+use App\Http\Resources\GenerationResource;
 use App\Jobs\SubmitGeneration;
 use App\Pricing\Estimate;
 use App\Pricing\PricingService;
@@ -12,9 +13,20 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class GenerationController extends Controller
 {
+    public function index(Request $request): Response
+    {
+        return Inertia::render('Generations/Index', [
+            'generations' => GenerationResource::collection(
+                $request->user()->generations()->latest()->limit(50)->get()
+            )->resolve(),
+        ]);
+    }
+
     /** Price range for the form, computed by the same service that prices the stored generation. */
     public function estimate(Request $request, PricingService $pricing): JsonResponse
     {
@@ -51,7 +63,7 @@ class GenerationController extends Controller
 
         SubmitGeneration::dispatch($generation->id);
 
-        return back()->with('status', 'Generation queued.');
+        return to_route('generations.index')->with('status', 'Generation queued.');
     }
 
     private function estimateFor(PricingService $pricing, string $prompt, string $quality, string $size, int $references): Estimate
