@@ -16,6 +16,8 @@ use Tests\TestCase;
 
 pest()->extend(TestCase::class)
     ->use(RefreshDatabase::class)
+    // Tests render Inertia pages without needing `npm run build` first (fresh clones, CI).
+    ->beforeEach(fn () => $this->withoutVite())
     ->in('Feature');
 
 /*
