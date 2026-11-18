@@ -38,10 +38,12 @@ Status legend: [ ] todo, [~] in progress, [x] done.
 - [x] Navigation (New image, History); `/dashboard` redirects to the generate page
 - [ ] Not yet seen in a real browser (see Phase 5 notes)
 
-## Phase 6: Deploy and verify
-- [ ] Deploy (queue worker + scheduler), set webhook URL, secrets
+## Phase 6: Deploy and verify [~]
+- [x] Deploy to Hostinger shared PHP hosting, with its own Pixelforge key, webhook URL and secret
+- [x] Queue and reconciliation running from a single `schedule:run` cron
+- [x] Real webhook delivery from Pixelforge accepted by the deployed endpoint
 - [ ] Leave test generations on the deployed key (success, failure, slow, duplicate)
-- [ ] Compare with `GET /v1/usage`
+- [ ] Compare the production ledger with `GET /v1/usage` for the production key (steps in `testing-guide.md`)
 
 ## Phase 7: Stretch goals
 - [ ] Balances, buy credits, block when unaffordable
@@ -92,6 +94,15 @@ Status legend: [ ] todo, [~] in progress, [x] done.
 - The estimate uses `Rates::published()`, not live `GET /v1/pricing`. If Pixelforge changed rates, the estimate would drift while the final charge (which uses each generation's own `rates`) stays right.
 - Feature tests now call `withoutVite()`, so they pass on a fresh clone without `npm run build`. Verified by temporarily removing `public/build`.
 - **Not verified visually:** the Chrome extension was not connected, so the pages were checked only through Inertia prop tests and a successful `npm run build`. A manual pass in a browser is still needed (layout, polling behavior, estimate updates while typing).
+
+### Phase 6 (deployment on Hostinger shared hosting)
+- **Host type matters.** Hostinger's Node/static "web app" deploy cannot run Laravel: it only runs `npm install` and `npm run build`, expects a `dist` folder and never runs Composer or PHP. The app needs a PHP site (PHP 8.3 here), MySQL and cron.
+- **Frontend build is independent of Composer.** `app.js` imported Ziggy from `vendor/`, which broke any build that does not run `composer install`. It now imports the `ziggy-js` npm package. `public/build` is gitignored, so it is built locally and uploaded by hand.
+- **Folder layout.** The domain serves the project root (`public_html`), not `public/`. Two `.htaccess` files are needed: the root one rewrites everything to `public/` (with a `!^/public/` condition to avoid loops), and `public/.htaccess` is Laravel's standard file. Putting both blocks in one file broke routing, and with only Laravel's block the project files (`composer.json`, `artisan`) were publicly readable until the root rewrite was added. `/.env` and `storage/logs` stay blocked.
+- **Database.** No working terminal at first, so the schema was imported through phpMyAdmin from `docs/pixelforge_schema.sql`, generated from the real migrations and including the `migrations` rows. A user is added with `docs/admin_user.sql` (gitignored, holds a credential).
+- **Queue.** A separate `queue:work` cron never ran, and jobs sat at `attempts = 0`; once a worker finally ran, such jobs were failed by their 15 minute lifetime (`MaxAttemptsExceededException`) and their generations were marked failed at no cost, as designed. The fix was to schedule `queue:work --stop-when-empty --max-time=50` from `routes/console.php`, so one cron (`cd <app> && /opt/alt/php83/usr/bin/php artisan schedule:run`) does everything. The cron command needs `cd` before the path, and the full PHP path, because a bare `php` can be an older version.
+- **Separate keys per environment.** The first deployment reused the local key and webhook secret. A signed test ping confirmed this; it was fixed with a dedicated production key, and the same test now returns 401. Keys must not be shared, otherwise `GET /v1/usage` mixes local and production generations.
+- **Local test environment gotcha.** On Windows, the scheduler's child process lacked the CA bundle fix, so reconcile failed silently. Fixed locally with `PHP_INI_SCAN_DIR` (see the testing guide).
 
 ### Local development note
 Laragon/WAMP PHP often has no CA bundle, so HTTPS calls fail with cURL error 60. The client treats that as a transient error and retries, so it looks like a hang rather than a crash. Fix with `curl.cainfo` and `openssl.cafile` in `php.ini`, or run with `php -d curl.cainfo=<bundle> -d openssl.cafile=<bundle>`. Git for Windows ships a bundle at `C:\Program Files\Git\mingw64\etc\ssl\certs\ca-bundle.crt`.
