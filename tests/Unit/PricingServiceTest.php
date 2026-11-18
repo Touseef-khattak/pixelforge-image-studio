@@ -12,6 +12,32 @@ it('computes provider cost exactly from token usage', function () {
         ->toBe(500_000 + 7_650_000 + 44_000_000 + 2_500_000);
 });
 
+it('prices a real Pixelforge generation exactly', function () {
+    // Captured from a real completed generation (low, 1024x1024, 32-char prompt).
+    $rates = Rates::fromApi([
+        'input_text_tokens' => '5.00', 'input_image_tokens' => '10.00',
+        'output_tokens' => '40.00', 'reasoning_tokens' => '12.50',
+    ]);
+    $usage = TokenUsage::fromApi([
+        'input_text_tokens' => 8, 'input_image_tokens' => 0,
+        'output_tokens' => 280, 'reasoning_tokens' => 91, 'total_tokens' => 379,
+    ]);
+
+    $pricing = new PricingService;
+    $cost = $pricing->providerCost($usage, $rates);
+
+    expect($rates)->toEqual(Rates::published())
+        ->and($cost)->toBe(12_377_500)
+        ->and($pricing->charge($cost))->toBe(15_471_875);
+});
+
+it('rejects rates it cannot represent exactly', function () {
+    Rates::fromApi([
+        'input_text_tokens' => '5.0001', 'input_image_tokens' => '10.00',
+        'output_tokens' => '40.00', 'reasoning_tokens' => '12.50',
+    ]);
+})->throws(InvalidArgumentException::class);
+
 it('costs nothing for zero usage', function () {
     $usage = new TokenUsage(0, 0, 0, 0);
 
