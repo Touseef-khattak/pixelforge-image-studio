@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\SpendReportController;
 use App\Http\Controllers\GenerationController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
@@ -20,6 +21,9 @@ Route::get('/dashboard', fn () => to_route('generations.create'))
     ->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
+    Route::get('/admin/report', [SpendReportController::class, 'index'])
+        ->middleware('can:view-reports')->name('admin.report');
+
     Route::get('/generations', [GenerationController::class, 'index'])->name('generations.index');
     Route::get('/generations/create', [GenerationController::class, 'create'])->name('generations.create');
     Route::get('/generations/estimate', [GenerationController::class, 'estimate'])->name('generations.estimate');
