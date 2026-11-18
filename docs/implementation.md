@@ -24,12 +24,13 @@ Status legend: [ ] todo, [~] in progress, [x] done.
 - [x] Generate request validation + controller storing a queued generation (`POST /generations`)
 - [x] `SubmitGeneration` job with idempotency key and error handling (429s, 503, permanent errors)
 
-## Phase 4: Webhooks and finalization
-- [ ] Signature verifier (raw body, timestamp tolerance)
-- [ ] Webhook controller with event dedupe
-- [ ] `FinalizeGeneration` action: monotonic state machine, exactly-once cost + ledger
-- [ ] Lookup by provider id or `metadata.local_id` (event before create returns)
-- [ ] Polling reconciliation command + schedule
+## Phase 4: Webhooks and finalization [x]
+- [x] Signature verifier (raw body, timestamp tolerance)
+- [x] Webhook controller with event dedupe
+- [x] `ApplyGenerationUpdate` action: monotonic state machine, exactly-once cost + ledger
+- [x] Lookup by provider id or `metadata.local_id` (event before create returns)
+- [x] Polling reconciliation command + schedule
+- [x] Verified end to end against the real API (polling path); real webhook delivery is still to be verified once a public URL exists (Phase 6)
 
 ## Phase 5: UI
 - [ ] Generate page with live estimate range
@@ -70,6 +71,18 @@ Status legend: [ ] todo, [~] in progress, [x] done.
 - The estimate saved on a generation already includes the markup (`estimated_min/max_nanos` are user-facing charges), computed from `Rates::published()`. A later improvement is to read live rates from `GET /v1/pricing`.
 - `reference_images` are validated as http(s) URLs (max 4). Prompt length uses `mb_strlen`; whether Pixelforge counts characters or bytes for non-ASCII prompts is unverified.
 - The endpoint redirects back with a flash message for now; Phase 5 redirects to the history page.
+
+### Phase 4
+- One action, `ApplyGenerationUpdate`, is the only code that moves a generation forward or charges it. The webhook and the poller both call it, so there is a single pricing path.
+- Exactly-once charging has three layers: the final-state check inside a transaction with `lockForUpdate`, the unique `webhook_events.event_id`, and the unique `ledger_entries (generation_id, type)`. A test proves a failed ledger insert rolls the status change back.
+- The webhook records the event and applies it in one transaction. If applying throws, the event row rolls back and the endpoint answers 5xx, so Pixelforge's retry (10s, 30s, 2m, 10m, 15m) gets a clean second attempt instead of being swallowed as a duplicate.
+- The webhook route is registered in `bootstrap/app.php` outside the `web` middleware group, so it has no session, cookies or CSRF. Authenticity comes only from the HMAC.
+- Signature timestamp: the code accepts unix seconds, and falls back to `strtotime` for an ISO string. **Unverified** until a real delivery arrives, because the docs give only `t=<timestamp>`. Tolerance is 300s (`PIXELFORGE_WEBHOOK_TOLERANCE`).
+- Polling: `generations:reconcile` runs every minute and picks generations with a provider id, not final, and no update for 2 minutes. Rows with no provider id are left to `SubmitGeneration`'s own retries. The scheduler (`schedule:run` every minute) must be running on every environment, or lost webhooks are never recovered.
+- Real check: 3 real generations (one made by hand, two through the app code and the poller) totalled 38,325,000 nano-dollars, and `GET /v1/usage` reported `0.038325000`. Resubmitting an already-created generation returned the same Pixelforge id (idempotency confirmed live).
+
+### Local development note
+Laragon/WAMP PHP often has no CA bundle, so HTTPS calls fail with cURL error 60. The client treats that as a transient error and retries, so it looks like a hang rather than a crash. Fix with `curl.cainfo` and `openssl.cafile` in `php.ini`, or run with `php -d curl.cainfo=<bundle> -d openssl.cafile=<bundle>`. Git for Windows ships a bundle at `C:\Program Files\Git\mingw64\etc\ssl\certs\ca-bundle.crt`.
 
 ## Not yet decided
 - The user's balance column. It is a stretch goal and can be derived as topups minus charges from the ledger.
