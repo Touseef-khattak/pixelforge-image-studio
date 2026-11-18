@@ -15,9 +15,9 @@ Route::get('/', function () {
     ]);
 });
 
-Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+// Breeze sends users here after login; the app's home is the generate page.
+Route::get('/dashboard', fn () => to_route('generations.create'))
+    ->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
     Route::get('/generations', [GenerationController::class, 'index'])->name('generations.index');
