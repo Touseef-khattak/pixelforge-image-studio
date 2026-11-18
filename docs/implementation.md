@@ -19,10 +19,10 @@ Status legend: [ ] todo, [~] in progress, [x] done.
 - [x] `webhook_events` migration + model
 - [x] `ledger_entries` migration + model (unique per generation + type)
 
-## Phase 3: Provider client and submission
-- [ ] `PixelforgeClient` (create, get, list, usage)
-- [ ] Generate request validation + controller storing a queued generation
-- [ ] `SubmitGeneration` job with idempotency key and error handling (429s, 503, permanent errors)
+## Phase 3: Provider client and submission [x]
+- [x] `PixelforgeClient` (create, get); `usage` is added with the admin report in Phase 7
+- [x] Generate request validation + controller storing a queued generation (`POST /generations`)
+- [x] `SubmitGeneration` job with idempotency key and error handling (429s, 503, permanent errors)
 
 ## Phase 4: Webhooks and finalization
 - [ ] Signature verifier (raw body, timestamp tolerance)
@@ -62,7 +62,17 @@ Status legend: [ ] todo, [~] in progress, [x] done.
 - Money columns are `unsignedBigInteger` nano-dollars: `estimated_min/max_nanos`, `provider_cost_nanos`, `charged_nanos`.
 - Exactly-once guarantees are enforced by the database, not just code: unique `webhook_events.event_id` and unique `ledger_entries (generation_id, type)`. Both have tests.
 - `ledger_entries` holds `charge` and `topup` rows with positive amounts; the `type` gives the direction. Each charge row also stores `provider_cost_nanos` so profit is a plain sum later.
-- Not yet decided: the user's balance column. It is a stretch goal and can be derived as topups minus charges from the ledger.
+### Phase 3
+- Verified against the live API with the local key: one real generation (cost 12,377,500 nano-dollars, charge 15,471,875) is now a test fixture, and error bodies are `{"error": {"type", "code", "message"}}` with `Retry-After` on 503.
+- `Rates::fromApi` parses rates as strings (no floats) and rejects more than 3 decimals per 1M tokens, so a rate change can never silently introduce rounding.
+- Retry policy in `SubmitGeneration`: retryable = 429 (except daily quota), 5xx and connection failures. It releases the job after `Retry-After` plus 0-3s jitter, bounded by a 15 minute window rather than an attempt count (the concurrency limit of 3 makes many retries normal). Permanent errors fail the generation immediately with the provider's message; exhausted retries fail it as `submission_failed`. Neither charges anything.
+- The job writes only `provider_generation_id` and `rates`, using `whereNull(...)->update()`, so it can never regress a status set by an earlier webhook.
+- The estimate saved on a generation already includes the markup (`estimated_min/max_nanos` are user-facing charges), computed from `Rates::published()`. A later improvement is to read live rates from `GET /v1/pricing`.
+- `reference_images` are validated as http(s) URLs (max 4). Prompt length uses `mb_strlen`; whether Pixelforge counts characters or bytes for non-ASCII prompts is unverified.
+- The endpoint redirects back with a flash message for now; Phase 5 redirects to the history page.
+
+## Not yet decided
+- The user's balance column. It is a stretch goal and can be derived as topups minus charges from the ledger.
 
 ## Open questions
 (none yet)
