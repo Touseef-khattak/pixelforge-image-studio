@@ -42,7 +42,7 @@ const brokenImages = reactive(new Set());
             <div class="flex items-center justify-between">
                 <h2 class="text-xl font-semibold leading-tight text-gray-800">History</h2>
                 <Link
-                    href="/generations/create"
+                    :href="route('generations.create')"
                     class="rounded-md bg-gray-800 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-white hover:bg-gray-700"
                 >
                     New image

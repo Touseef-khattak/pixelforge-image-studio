@@ -27,6 +27,16 @@ class GenerationController extends Controller
         ]);
     }
 
+    public function create(): Response
+    {
+        return Inertia::render('Generations/Create', [
+            'sizes' => StoreGenerationRequest::SIZES,
+            'qualities' => StoreGenerationRequest::QUALITIES,
+            'maxReferences' => 4,
+            'markupPercent' => config('pixelforge.markup_percent'),
+        ]);
+    }
+
     /** Price range for the form, computed by the same service that prices the stored generation. */
     public function estimate(Request $request, PricingService $pricing): JsonResponse
     {

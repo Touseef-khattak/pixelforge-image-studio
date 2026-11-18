@@ -21,6 +21,7 @@ Route::get('/dashboard', function () {
 
 Route::middleware('auth')->group(function () {
     Route::get('/generations', [GenerationController::class, 'index'])->name('generations.index');
+    Route::get('/generations/create', [GenerationController::class, 'create'])->name('generations.create');
     Route::get('/generations/estimate', [GenerationController::class, 'estimate'])->name('generations.estimate');
     Route::post('/generations',[GenerationController::class, 'store'])->name('generations.store');
 
