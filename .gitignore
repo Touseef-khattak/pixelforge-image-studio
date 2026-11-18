@@ -28,3 +28,6 @@ yarn-error.log
 # Playwright output
 /e2e-results
 /e2e-report
+
+# Generated upload package (rebuilt on demand)
+/docs/build.zip
