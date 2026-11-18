@@ -41,6 +41,24 @@ class Generation extends Model
         return $this->belongsTo(User::class);
     }
 
+    /**
+     * Fail a generation that never produced an image. It costs nothing, so no ledger entry is
+     * written and charged_nanos stays null. A final generation is never changed.
+     */
+    public function markFailed(string $code, string $message): void
+    {
+        if ($this->isFinal()) {
+            return;
+        }
+
+        $this->update([
+            'status' => self::FAILED,
+            'error_code' => $code,
+            'error_message' => $message,
+            'completed_at' => now(),
+        ]);
+    }
+
     /** succeeded and failed are final; a generation never leaves them. */
     public function isFinal(): bool
     {

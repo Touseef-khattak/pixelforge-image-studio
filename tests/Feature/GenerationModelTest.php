@@ -15,6 +15,26 @@ it('stores a queued generation with a uuid and integer money', function () {
         ->and($generation->isFinal())->toBeFalse();
 });
 
+it('marks a generation failed at no cost', function () {
+    $generation = Generation::factory()->create();
+
+    $generation->markFailed('content_policy_violation', 'Rejected.');
+
+    expect($generation->fresh())
+        ->status->toBe(Generation::FAILED)
+        ->error_code->toBe('content_policy_violation')
+        ->charged_nanos->toBeNull()
+        ->completed_at->not->toBeNull();
+});
+
+it('never changes a generation that already succeeded', function () {
+    $generation = Generation::factory()->succeeded()->create();
+
+    $generation->markFailed('internal_error', 'late failure');
+
+    expect($generation->fresh()->status)->toBe(Generation::SUCCEEDED);
+});
+
 it('treats succeeded and failed as final', function () {
     expect(Generation::factory()->succeeded()->make()->isFinal())->toBeTrue()
         ->and(Generation::factory()->failed()->make()->isFinal())->toBeTrue();
