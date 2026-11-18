@@ -10,6 +10,19 @@ final class Money
 {
     public const NANOS_PER_USD = 1_000_000_000;
 
+    /**
+     * Parse an exact USD decimal string such as "0.038325000" into nano-dollars, without floats.
+     * More than nine decimals would lose precision, so it is rejected rather than rounded.
+     */
+    public static function parseUsd(string $usd): int
+    {
+        if (! preg_match('/^(\d+)(?:\.(\d{1,9}))?$/', $usd, $m)) {
+            throw new \InvalidArgumentException("Unsupported USD amount: {$usd}");
+        }
+
+        return ((int) $m[1]) * self::NANOS_PER_USD + (int) str_pad($m[2] ?? '', 9, '0');
+    }
+
     /** Format nano-dollars as "$1.50" or "$0.373875": at least 2 decimals, trailing zeros trimmed. */
     public static function format(int $nanos): string
     {
