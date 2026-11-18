@@ -1,4 +1,4 @@
-# End-to-end test guide (deployed app)
+﻿# End-to-end test guide (deployed app)
 
 Run this against the deployed site with the **production** Pixelforge key. Each scenario says what to do and what must be true afterwards. Money is stored as integer nano-dollars (1 USD = 1,000,000,000).
 
@@ -7,7 +7,7 @@ Run this against the deployed site with the **production** Pixelforge key. Each 
 - The database has the 12 tables (`docs/pixelforge_schema.sql` imported) and an account exists.
 - Server `.env` has the **production** `PIXELFORGE_API_KEY` and that same key's `PIXELFORGE_WEBHOOK_SECRET`.
 - In the Pixelforge dashboard, the production key's webhook URL is `https://<your-domain>/webhooks/pixelforge`.
-- Two cron jobs run every minute: `schedule:run` and `queue:work --max-time=55`.
+- One cron job runs every minute: `cd <app folder> && /opt/alt/php83/usr/bin/php artisan schedule:run >> /dev/null 2>&1`. The scheduler also drains the queue (`queue:work --stop-when-empty`), so a separate worker cron is not needed. Use your host's real PHP path; a bare `php` may be an older version.
 - Webhook reachability: in the Pixelforge dashboard, send a test (`ping`) event. The delivery log must show **204**. A 401 means the secret is wrong; a 404 means routing (`.htaccess`) is wrong.
 
 Timing to expect: a submission leaves the app within about 1 minute (queue cron). Pixelforge then takes about 2s queued and about 20s processing. With working webhooks the status updates immediately; if a webhook is lost, `generations:reconcile` finishes it within about 2 to 3 minutes.
