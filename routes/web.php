@@ -3,18 +3,11 @@
 use App\Http\Controllers\Admin\SpendReportController;
 use App\Http\Controllers\GenerationController;
 use App\Http\Controllers\ProfileController;
-use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 
-Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
-    ]);
-});
+// No marketing page: the root is the login screen. Signed-in users are forwarded on to the app by
+// the guest middleware on /login.
+Route::redirect('/', '/login');
 
 // Breeze sends users here after login; the app's home is the generate page.
 Route::get('/dashboard', fn () => to_route('generations.create'))
