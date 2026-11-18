@@ -45,6 +45,13 @@ const showingNavigationDropdown = ref(false);
                                 >
                                     History
                                 </NavLink>
+                                <NavLink
+                                    v-if="$page.props.auth.user.is_admin"
+                                    :href="route('admin.report')"
+                                    :active="route().current('admin.report')"
+                                >
+                                    Report
+                                </NavLink>
                             </div>
                         </div>
 
@@ -157,6 +164,13 @@ const showingNavigationDropdown = ref(false);
                             :active="route().current('generations.index')"
                         >
                             History
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink
+                            v-if="$page.props.auth.user.is_admin"
+                            :href="route('admin.report')"
+                            :active="route().current('admin.report')"
+                        >
+                            Report
                         </ResponsiveNavLink>
                     </div>
 
