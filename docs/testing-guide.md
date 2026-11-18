@@ -74,5 +74,26 @@ curl -s "https://pixelforge.promptedit.dev/v1/usage?start_date=YYYY-MM-DD&end_da
 
 For each day, `cost_usd` x 1,000,000,000 must equal `cost_nanos`, and `generations` must match the count. Generations made with the **local** key are not in the production database or its usage report; compare each environment with its own key.
 
+## 3b. Automated browser tests (Playwright)
+The suite lives in `e2e/` and drives the installed Chrome, so no browser download is needed.
+
+| Command | What it runs | Provider quota |
+|---|---|---|
+| `npm run e2e` | 9 UI tests: register, login, logout, redirects, estimate range and its growth with quality, size and references, disabled button, four-reference limit | none |
+| `npm run e2e:live` | 6 tests tagged `@live`: success with exact cost, references priced in, `[fail]`, `[blocked]`, `[duplicate]`, per-user isolation | 6 generations (free) |
+
+Point either at any running copy of the app with `E2E_BASE_URL`:
+
+```
+E2E_BASE_URL=https://your-domain npm run e2e          # macOS/Linux
+$env:E2E_BASE_URL='https://your-domain'; npm run e2e   # PowerShell
+```
+
+Requirements for `e2e:live`: the app's queue worker and scheduler must be running. Without webhooks (local), each generation finishes through the reconcile command and takes about 3 minutes, so the suite takes about 12 minutes. On the deployed site with webhooks it takes well under a minute per test. The tests create throwaway users named `e2e+<timestamp>@example.test`; do not run them against the site you submit unless you are happy with those extra rows.
+
+Local gotchas found while running them:
+- The scheduler starts `generations:reconcile` as a child process. If PHP has no CA bundle (common on Windows), that child fails with a silent SSL error and generations never finish. Fix it for every child process with an extra ini file: put `curl.cainfo` and `openssl.cafile` in a `ca.ini` inside a folder and set `PHP_INI_SCAN_DIR` to that folder before starting `artisan serve`, `queue:work` and `schedule:work`. (`SSL_CERT_FILE` is not honoured by this PHP build.)
+- If another project already uses port 8000, run this app on a free port and pass it through `E2E_BASE_URL`.
+
 ## 4. Leave it ready to submit
 Keep a handful of generations on the production site: at least one success with references, one `[fail]`, one `[duplicate]`. Do not delete rows afterwards, so the reviewers' numbers match.
