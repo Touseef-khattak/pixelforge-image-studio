@@ -21,3 +21,6 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
+
+# Credentials: never commit
+/docs/admin_user.sql
