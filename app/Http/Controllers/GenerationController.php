@@ -4,24 +4,41 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreGenerationRequest;
 use App\Jobs\SubmitGeneration;
+use App\Pricing\Estimate;
 use App\Pricing\PricingService;
 use App\Pricing\Rates;
+use App\Support\Money;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class GenerationController extends Controller
 {
+    /** Price range for the form, computed by the same service that prices the stored generation. */
+    public function estimate(Request $request, PricingService $pricing): JsonResponse
+    {
+        $data = $request->validate([
+            'prompt' => ['nullable', 'string', 'max:4000'],
+            'size' => ['required', Rule::in(StoreGenerationRequest::SIZES)],
+            'quality' => ['required', Rule::in(StoreGenerationRequest::QUALITIES)],
+            'reference_count' => ['nullable', 'integer', 'min:0', 'max:4'],
+        ]);
+
+        $estimate = $this->estimateFor($pricing, $data['prompt'] ?? '', $data['quality'], $data['size'], (int) ($data['reference_count'] ?? 0));
+
+        return response()->json([
+            'min' => Money::format($estimate->chargeMin),
+            'max' => Money::format($estimate->chargeMax),
+        ]);
+    }
+
     public function store(StoreGenerationRequest $request, PricingService $pricing): RedirectResponse
     {
         $data = $request->validated();
         $references = $data['reference_images'] ?? [];
 
-        $estimate = $pricing->estimate(
-            mb_strlen($data['prompt']),
-            $data['quality'],
-            $data['size'],
-            count($references),
-            Rates::published(),
-        );
+        $estimate = $this->estimateFor($pricing, $data['prompt'], $data['quality'], $data['size'], count($references));
 
         $generation = $request->user()->generations()->create([
             'prompt' => $data['prompt'],
@@ -35,5 +52,10 @@ class GenerationController extends Controller
         SubmitGeneration::dispatch($generation->id);
 
         return back()->with('status', 'Generation queued.');
+    }
+
+    private function estimateFor(PricingService $pricing, string $prompt, string $quality, string $size, int $references): Estimate
+    {
+        return $pricing->estimate(mb_strlen($prompt), $quality, $size, $references, Rates::published());
     }
 }

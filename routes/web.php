@@ -20,7 +20,8 @@ Route::get('/dashboard', function () {
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
-    Route::post('/generations', [GenerationController::class, 'store'])->name('generations.store');
+    Route::get('/generations/estimate', [GenerationController::class, 'estimate'])->name('generations.estimate');
+    Route::post('/generations',[GenerationController::class, 'store'])->name('generations.store');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
